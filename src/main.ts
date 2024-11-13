@@ -35,7 +35,10 @@ let playerPoints = 0;
 const statusPanel = document.querySelector<HTMLDivElement>("#statusPanel")!;
 statusPanel.innerHTML = "Points: 0";
 
-// Spawn cache with random point value and interactive buttons
+// Initialize cache points storage to persist cache values
+const cachePoints: Record<string, number> = {};
+
+// Spawn cache with persistent random point value and interactive buttons
 function spawnCache(i: number, j: number) {
   const lat1 = OAKES_CLASSROOM.lat + i * TILE_DEGREES;
   const lng1 = OAKES_CLASSROOM.lng + j * TILE_DEGREES;
@@ -43,35 +46,41 @@ function spawnCache(i: number, j: number) {
   const lng2 = OAKES_CLASSROOM.lng + (j + 1) * TILE_DEGREES;
   const bounds = leaflet.latLngBounds([[lat1, lng1], [lat2, lng2]]);
 
+  // Unique key for each cache location
+  const key = `${i},${j}`;
+  if (!(key in cachePoints)) {
+    cachePoints[key] = Math.floor(luck(key) * 100);  // Only set the initial value once
+  }
+
   const rect = leaflet.rectangle(bounds)
     .addTo(map)
     .bindPopup(() => {
-      let pointValue = Math.floor(luck(`${i},${j},initialValue`) * 100);
       const popupDiv = document.createElement("div");
+      const pointValue = cachePoints[key]; // Always use the updated value from cachePoints
 
       popupDiv.innerHTML = `
         <div>Cache found at "${i},${j}". Value: <span id="value">${pointValue}</span></div>
         <button id="collect">Collect</button>
         <button id="deposit">Deposit</button>`;
-      
+
       const collectButton = popupDiv.querySelector<HTMLButtonElement>("#collect")!;
       const depositButton = popupDiv.querySelector<HTMLButtonElement>("#deposit")!;
       const valueSpan = popupDiv.querySelector<HTMLSpanElement>("#value")!;
 
       collectButton.addEventListener("click", () => {
-        if (pointValue > 0) {
-          pointValue--;
+        if (cachePoints[key] > 0) {
+          cachePoints[key]--; // Decrease the cache's stored points
           playerPoints++;
-          valueSpan.innerHTML = pointValue.toString();
+          valueSpan.innerHTML = cachePoints[key].toString(); // Update the displayed value
           statusPanel.innerHTML = `Points: ${playerPoints}`;
         }
       });
 
       depositButton.addEventListener("click", () => {
         if (playerPoints > 0) { 
-          pointValue++;
+          cachePoints[key]++; // Increase the cache's stored points
           playerPoints--;
-          valueSpan.innerHTML = pointValue.toString();
+          valueSpan.innerHTML = cachePoints[key].toString(); // Update the displayed value
           statusPanel.innerHTML = `Points: ${playerPoints}`;
         }
       });
