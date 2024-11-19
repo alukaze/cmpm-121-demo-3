@@ -1,87 +1,111 @@
-// @deno-types="npm:@types/leaflet@^1.9.14"
 import leaflet from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./style.css";
 import "./leafletWorkaround.ts";
 import luck from "./luck.ts";
+import { Board } from "./board.ts";
 
-// Define constants
+// Constants
 const OAKES_CLASSROOM = leaflet.latLng(36.98949379578401, -122.06277128548504);
-const GAMEPLAY_ZOOM_LEVEL = 19;
-const TILE_DEGREES = 1e-4;
-const NEIGHBORHOOD_SIZE = 8;
+const TILE_WIDTH = 1e-4;
+const TILE_VISIBILITY_RADIUS = 8;
 const CACHE_SPAWN_PROBABILITY = 0.1;
 
-// Initialize map
+// Initialize board and map
+const board = new Board(TILE_WIDTH, TILE_VISIBILITY_RADIUS);
 const map = leaflet.map(document.getElementById("map")!, {
   center: OAKES_CLASSROOM,
-  zoom: GAMEPLAY_ZOOM_LEVEL,
-  minZoom: GAMEPLAY_ZOOM_LEVEL,
-  maxZoom: GAMEPLAY_ZOOM_LEVEL,
+  zoom: 19,
+  minZoom: 19,
+  maxZoom: 19,
   zoomControl: false,
   scrollWheelZoom: false,
 });
 
 leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
-  attribution:
-    '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 }).addTo(map);
 
 const playerMarker = leaflet.marker(OAKES_CLASSROOM).addTo(map).bindTooltip("That's you!");
 
-// Initialize points display
+// Points display
 let playerPoints = 0;
 const statusPanel = document.querySelector<HTMLDivElement>("#statusPanel")!;
-statusPanel.innerHTML = "Points: 0";
+statusPanel.innerHTML = "Coins: 0";
 
-// Initialize cache points storage to persist cache values
-const cachePoints: Record<string, number> = {};
+// Cache and inventory management
+const cacheData: Record<string, { coins: { i: number; j: number; number: number }[] }> = {};
+const inventory: { i: number; j: number; number: number }[] = [];
 
-// Spawn cache with persistent random point value and interactive buttons
-function spawnCache(i: number, j: number) {
-  const lat1 = OAKES_CLASSROOM.lat + i * TILE_DEGREES;
-  const lng1 = OAKES_CLASSROOM.lng + j * TILE_DEGREES;
-  const lat2 = OAKES_CLASSROOM.lat + (i + 1) * TILE_DEGREES;
-  const lng2 = OAKES_CLASSROOM.lng + (j + 1) * TILE_DEGREES;
-  const bounds = leaflet.latLngBounds([[lat1, lng1], [lat2, lng2]]);
+function getCoinId(cell: { i: number; j: number }, number: number): string {
+  return `${cell.i},${cell.j},#${number}`;
+}
 
-  // Unique key for each cache location
-  const key = `${i},${j}`;
-  if (!(key in cachePoints)) {
-    cachePoints[key] = Math.floor(luck(key) * 100);  // Only set the initial value once
+function updateInventoryDisplay() {
+  const inventoryPanel = document.querySelector<HTMLDivElement>("#inventoryPanel")!;
+  inventoryPanel.innerHTML = "<h3>Inventory:</h3>";
+  if (inventory.length === 0) {
+    inventoryPanel.innerHTML += "<p>No coins collected yet.</p>";
+  } else {
+    inventoryPanel.innerHTML += "<ul>" + inventory
+      .map((coin) => `<li>- ${coin.i}: ${coin.j} #${coin.number}</li>`)
+      .join("") + "</ul>";
+  }
+}
+
+function spawnCache(cell: { i: number; j: number }) {
+  const bounds = board.getCellBounds(cell);
+  const key = `${cell.i},${cell.j}`;
+
+  if (!(key in cacheData)) {
+    const numberOfCoins = Math.floor(luck(key) * 100);
+    cacheData[key] = { coins: Array.from({ length: numberOfCoins }, (_, number) => ({ i: cell.i, j: cell.j, number })) };
   }
 
   const rect = leaflet.rectangle(bounds)
     .addTo(map)
     .bindPopup(() => {
       const popupDiv = document.createElement("div");
-      const pointValue = cachePoints[key]; // Always use the updated value from cachePoints
-
+      const coinList = cacheData[key].coins;
       popupDiv.innerHTML = `
-        <div>Cache found at "${i},${j}". Value: <span id="value">${pointValue}</span></div>
-        <button id="collect">Collect</button>
-        <button id="deposit">Deposit</button>`;
+        <div>Cache found at "${cell.i},${cell.j}". Coins available: <span id="value">${coinList.length}</span></div>
+        <button id="collect">Collect a Coin</button>
+        <button id="deposit">Deposit a Coin</button>
+        <div id="coinList">Coins: <br><ul>${coinList
+          .map((coin) => `<li>${coin.i}: ${coin.j} #${coin.number}</li>`)
+          .join("")}</ul></div>`;
 
       const collectButton = popupDiv.querySelector<HTMLButtonElement>("#collect")!;
       const depositButton = popupDiv.querySelector<HTMLButtonElement>("#deposit")!;
       const valueSpan = popupDiv.querySelector<HTMLSpanElement>("#value")!;
+      const coinListDiv = popupDiv.querySelector<HTMLDivElement>("#coinList")!;
 
       collectButton.addEventListener("click", () => {
-        if (cachePoints[key] > 0) {
-          cachePoints[key]--; // Decrease the cache's stored points
+        if (coinList.length > 0) {
+          const collectedCoin = coinList.pop()!;
+          inventory.push(collectedCoin);
           playerPoints++;
-          valueSpan.innerHTML = cachePoints[key].toString(); // Update the displayed value
-          statusPanel.innerHTML = `Points: ${playerPoints}`;
+          valueSpan.innerHTML = coinList.length.toString();
+          coinListDiv.innerHTML = `Coins: <br><ul>${coinList
+            .map((coin) => `<li>${coin.i}: ${coin.j} #${coin.number}</li>`)
+            .join("")}</ul>`;
+          statusPanel.innerHTML = `Coins: ${playerPoints}`;
+          updateInventoryDisplay();
         }
       });
 
       depositButton.addEventListener("click", () => {
-        if (playerPoints > 0) { 
-          cachePoints[key]++; // Increase the cache's stored points
+        if (inventory.length > 0) {
+          const coinToDeposit = inventory.pop()!;
+          cacheData[key].coins.push(coinToDeposit);
           playerPoints--;
-          valueSpan.innerHTML = cachePoints[key].toString(); // Update the displayed value
+          valueSpan.innerHTML = cacheData[key].coins.length.toString();
+          coinListDiv.innerHTML = `Coins: <br><ul>${cacheData[key].coins
+            .map((coin) => `<li>${coin.i}: ${coin.j} #${coin.number}</li>`)
+            .join("")}</ul>`;
           statusPanel.innerHTML = `Points: ${playerPoints}`;
+          updateInventoryDisplay();
         }
       });
 
@@ -89,7 +113,14 @@ function spawnCache(i: number, j: number) {
     });
 }
 
-// Generate caches in neighborhood grid
-Array.from({ length: NEIGHBORHOOD_SIZE * 2 }, (_, offset) => offset - NEIGHBORHOOD_SIZE)
-  .forEach(i => Array.from({ length: NEIGHBORHOOD_SIZE * 2 }, (_, offset) => offset - NEIGHBORHOOD_SIZE)
-  .forEach(j => { if (luck([i, j].toString()) < CACHE_SPAWN_PROBABILITY) spawnCache(i, j); }));
+function updateCaches() {
+  const visibleCells = board.getCellsNearPoint(OAKES_CLASSROOM);
+  visibleCells.forEach((cell) => {
+    const key = `${cell.i},${cell.j}`;
+    if (luck(key) < CACHE_SPAWN_PROBABILITY) {
+      spawnCache(cell);
+    }
+  });
+}
+
+updateCaches();
