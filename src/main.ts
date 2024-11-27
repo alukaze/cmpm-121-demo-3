@@ -244,14 +244,31 @@ function loadGameData() {
   if (savedPoints) playerPoints = JSON.parse(savedPoints);
   if (savedInventory) Object.assign(inventory, JSON.parse(savedInventory));
   if (savedCacheData) loadCaches(JSON.parse(savedCacheData));
+
+  // Reset movement history and polyline
+  movementHistory = [playerLocation]; 
+  movementPolyline.setLatLngs(movementHistory); 
+
   if (savedMovementHistory) {
-    movementHistory = JSON.parse(savedMovementHistory).map((coords: [number, number]) => leaflet.latLng(coords));
-    movementPolyline.setLatLngs(movementHistory);
+    const parsedHistory = JSON.parse(savedMovementHistory).map((coords: [number, number]) => leaflet.latLng(coords));
+    if (parsedHistory.length > 0) {
+      movementHistory = [playerLocation]; 
+    }
   }
+
+  movementPolyline.setLatLngs(movementHistory);
+
+  // Ensure the map pans to the saved player location (or default if none found)
+  map.setView(playerLocation, 19);
+
+  // Move the player marker to the saved location
+  playerMarker.setLatLng(playerLocation);
 
   updateStatusPanel();
   updateInventoryDisplay();
 }
+
+
 
 // Move player
 function movePlayer(dx: number, dy: number) {
@@ -292,7 +309,7 @@ function startGeolocationTracking() {
         saveGameData();
       });
     }
-  }, 2000); // Update every 2 seconds
+  }, 1000); // Update every second
   updateStatusPanel();
 }
 
@@ -314,17 +331,18 @@ document.querySelector<HTMLButtonElement>("#sensor")!.addEventListener("click", 
 
 // Reset game state
 function resetGame() {
-  const confirmation = prompt("Are you sure you want to erase all game progress? This action cannot be undone.");
+  const confirmation = prompt("Are you sure you want to erase all game progress? This action cannot be undone. Type 'yes' if you are sure.");
   if (confirmation && confirmation.toLowerCase() === "yes") {
     // Save a copy before reset
     const coinsToReturn: { i: number; j: number; number: number }[] = [...inventory];
     
     // Reset the game state
-    playerLocation = leaflet.latLng(36.98949379578401, -122.06277128548504);
+    const defaultLocation = leaflet.latLng(36.98949379578401, -122.06277128548504); 
+    playerLocation = defaultLocation;
     playerPoints = 0;
     inventory.length = 0; 
     movementHistory = [playerLocation];
-    cacheData.length = 0; 
+    Object.keys(cacheData).forEach((key) => delete cacheData[key]); 
 
     // Return coins to their original cache locations
     coinsToReturn.forEach((coin) => {
@@ -342,14 +360,17 @@ function resetGame() {
     localStorage.removeItem(STORAGE_KEYS.CACHE_DATA);
     localStorage.removeItem(STORAGE_KEYS.MOVEMENT_HISTORY);
 
-    // Reset UI
-    playerMarker.setLatLng(playerLocation);
-    movementPolyline.setLatLngs(movementHistory);
+    // Reset map and UI
+    map.setView(defaultLocation, 19); 
+    playerMarker.setLatLng(defaultLocation); 
+    movementPolyline.setLatLngs(movementHistory); 
+
     updateStatusPanel();
     updateInventoryDisplay();
     updateCaches();
   }
 }
+
 
 document.querySelector<HTMLButtonElement>("#reset")!.addEventListener("click", resetGame);
 
