@@ -198,7 +198,7 @@ function spawnCache(cell: { i: number; j: number }) {
 // Update visible caches
 function updateCaches() {
   const visibleCells = board.getCellsNearPoint(playerLocation);
-  map.eachLayer((layer) => {
+  map.eachLayer((layer: leaflet.Layer) => {
     if (layer instanceof leaflet.Rectangle) {
       map.removeLayer(layer);
     }
@@ -209,14 +209,16 @@ function updateCaches() {
 // Save and load caches
 function saveCaches(): Record<string, string> {
   const savedData: Record<string, string> = {};
-  for (const [key, cache] of Object.entries(cacheData)) {
+  for (const key in cacheData) {
+    const cache = cacheData[key];
     savedData[key] = cache.toMemento();
   }
   return savedData;
 }
 
 function loadCaches(savedData: Record<string, string>) {
-  for (const [key, momento] of Object.entries(savedData)) {
+  for (const key in savedData) {
+    const momento = savedData[key];
     const [i, j] = key.split(",").map(Number);
     const cache = new Geocache(i, j);
     cache.fromMemento(momento);
@@ -292,7 +294,7 @@ document.querySelector<HTMLButtonElement>("#west")!.addEventListener("click", ()
 document.querySelector<HTMLButtonElement>("#east")!.addEventListener("click", () => movePlayer(1, 0));
 
 // Geolocation tracking
-let geolocationInterval: NodeJS.Timeout | null = null;
+let geolocationInterval: number | null = null;
 
 function startGeolocationTracking() {
   geolocationInterval = setInterval(() => {
@@ -330,28 +332,44 @@ document.querySelector<HTMLButtonElement>("#sensor")!.addEventListener("click", 
   }
 });
 
-// Reset game state
 function resetGame() {
-  const confirmation = prompt("Are you sure you want to erase all game progress? This action cannot be undone. Type 'yes' if you are sure.");
+  const confirmation = prompt(
+    "Are you sure you want to erase all game progress? This action cannot be undone. Type 'yes' if you are sure."
+  );
+
   if (confirmation && confirmation.toLowerCase() === "yes") {
-    // Save a copy before reset
+    // Save a copy of all coins (both collected and remaining in caches) before reset
     const coinsToReturn: { i: number; j: number; number: number }[] = [...inventory];
-    
+    const savedCaches = { ...cacheData };
+
     // Reset the game state
-    const defaultLocation = leaflet.latLng(36.98949379578401, -122.06277128548504); 
+    const defaultLocation = leaflet.latLng(36.98949379578401, -122.06277128548504);
     playerLocation = defaultLocation;
     playerPoints = 0;
-    inventory.length = 0; 
+    inventory.length = 0; // Clear inventory
     movementHistory = [playerLocation];
-    Object.keys(cacheData).forEach((key) => delete cacheData[key]); 
+    Object.keys(cacheData).forEach((key) => delete cacheData[key]); // Clear cache data
 
-    // Return coins to their original cache locations
+    // Restore original caches and coins in sorted order
+    for (const key in savedCaches) {
+      const { i, j, coins } = savedCaches[key];
+      if (!(key in cacheData)) {
+        cacheData[key] = new Geocache(i, j);
+      }
+      // Sort coins by their "number" property before restoring
+      coins.sort((a, b) => a.number - b.number);
+      coins.forEach((coin) => cacheData[key].coins.push(coin));
+    }
+
+    // Return collected coins to their respective caches in sorted order
     coinsToReturn.forEach((coin) => {
       const cacheKey = `${coin.i},${coin.j}`;
       if (!(cacheKey in cacheData)) {
         cacheData[cacheKey] = new Geocache(coin.i, coin.j);
       }
-      cacheData[cacheKey].coins.push(coin); 
+      // Add collected coins in sorted order
+      cacheData[cacheKey].coins.push(coin);
+      cacheData[cacheKey].coins.sort((a, b) => a.number - b.number);
     });
 
     // Clear game data from localStorage
@@ -362,9 +380,9 @@ function resetGame() {
     localStorage.removeItem(STORAGE_KEYS.MOVEMENT_HISTORY);
 
     // Reset map and UI
-    map.setView(defaultLocation, 19); 
-    playerMarker.setLatLng(defaultLocation); 
-    movementPolyline.setLatLngs(movementHistory); 
+    map.setView(defaultLocation, 19);
+    playerMarker.setLatLng(defaultLocation);
+    movementPolyline.setLatLngs(movementHistory);
 
     updateStatusPanel();
     updateInventoryDisplay();
