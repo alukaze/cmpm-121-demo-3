@@ -9,10 +9,10 @@ import { Board } from "./board.ts";
 // Configuration constants
 const TILE_WIDTH = 1e-4;
 const TILE_VISIBILITY_RADIUS = 8;
-const CACHE_SPAWN_PROBABILITY = 0.1; 
+const CACHE_SPAWN_PROBABILITY = 0.1;
 const MIN_COINS = 1;
 const MAX_COINS = 10;
- 
+
 // Initialize player's position
 let playerLocation = leaflet.latLng(36.98949379578401, -122.06277128548504);
 
@@ -39,7 +39,8 @@ const map = leaflet.map(document.getElementById("map")!, {
 // Add map tiles
 leaflet.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
-  attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  attribution:
+    '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
 }).addTo(map);
 
 // Add player marker
@@ -54,7 +55,8 @@ statusPanel.innerHTML = "Coins: 0<br>Geolocation: Off";
 
 // Initialize movement history as a polyline
 let movementHistory: leaflet.LatLng[] = [playerLocation];
-const movementPolyline = leaflet.polyline(movementHistory, { color: "red" }).addTo(map);
+const movementPolyline = leaflet.polyline(movementHistory, { color: "red" })
+  .addTo(map);
 
 // Cache and inventory management
 interface Memento<T> {
@@ -67,7 +69,11 @@ class Geocache implements Memento<string> {
   j: number;
   coins: { i: number; j: number; number: number }[];
 
-  constructor(i: number, j: number, coins: { i: number; j: number; number: number }[] = []) {
+  constructor(
+    i: number,
+    j: number,
+    coins: { i: number; j: number; number: number }[] = [],
+  ) {
     this.i = i;
     this.j = j;
     this.coins = coins;
@@ -87,20 +93,23 @@ const inventory: { i: number; j: number; number: number }[] = [];
 
 // Update inventory display
 function updateInventoryDisplay() {
-  const inventoryPanel = document.querySelector<HTMLDivElement>("#inventoryPanel")!;
+  const inventoryPanel = document.querySelector<HTMLDivElement>(
+    "#inventoryPanel",
+  )!;
   inventoryPanel.innerHTML = "<h3>Inventory:</h3>";
   inventoryPanel.innerHTML += inventory.length === 0
     ? "<p>No coins collected yet.</p>"
     : "<ul>" + inventory.map((coin) => {
       // Create a clickable coin identifier
-      const coinIdentifier = `<li><a href="#" class="coin-link" data-i="${coin.i}" data-j="${coin.j}" data-number="${coin.number}">${coin.i}: ${coin.j} #${coin.number}</a></li>`;
+      const coinIdentifier =
+        `<li><a href="#" class="coin-link" data-i="${coin.i}" data-j="${coin.j}" data-number="${coin.number}">${coin.i}: ${coin.j} #${coin.number}</a></li>`;
       return coinIdentifier;
     }).join("") + "</ul>";
 
   // Add click event listeners to coin links
-  document.querySelectorAll<HTMLAnchorElement>(".coin-link").forEach(link => {
+  document.querySelectorAll<HTMLAnchorElement>(".coin-link").forEach((link) => {
     link.addEventListener("click", (event) => {
-      event.preventDefault(); 
+      event.preventDefault();
 
       const i = parseInt(link.getAttribute("data-i")!);
       const j = parseInt(link.getAttribute("data-j")!);
@@ -111,9 +120,8 @@ function updateInventoryDisplay() {
       if (cache) {
         const bounds = board.getCellBounds({ i, j });
         const center = bounds.getCenter();
-        // Center the map 
+        // Center the map
         map.panTo(center);
-
       }
     });
   });
@@ -121,33 +129,47 @@ function updateInventoryDisplay() {
 
 // Update status panel without overriding geolocation status
 function updateStatusPanel() {
-  const geolocationStatus = geolocationInterval ? "Geolocation: On" : "Geolocation: Off";
+  const geolocationStatus = geolocationInterval
+    ? "Geolocation: On"
+    : "Geolocation: Off";
   statusPanel.innerHTML = `Coins: ${playerPoints}<br>${geolocationStatus}`;
 }
 
 // Collect and deposit coin handlers
-function collectCoin(coinList: { i: number; j: number; number: number }[], valueSpan: HTMLSpanElement, coinListDiv: HTMLDivElement) {
+function collectCoin(
+  coinList: { i: number; j: number; number: number }[],
+  valueSpan: HTMLSpanElement,
+  coinListDiv: HTMLDivElement,
+) {
   if (coinList.length > 0) {
     const collectedCoin = coinList.pop()!;
     inventory.push(collectedCoin);
     playerPoints++;
     valueSpan.innerHTML = coinList.length.toString();
-    coinListDiv.innerHTML = `Coins: <br><ul>${coinList
-      .map((coin) => `<li>${coin.i}: ${coin.j} #${coin.number}</li>`).join("")}</ul>`;
+    coinListDiv.innerHTML = `Coins: <br><ul>${
+      coinList
+        .map((coin) => `<li>${coin.i}: ${coin.j} #${coin.number}</li>`).join("")
+    }</ul>`;
     updateStatusPanel();
     updateInventoryDisplay();
     saveGameData();
   }
 }
 
-function depositCoin(coinList: { i: number; j: number; number: number }[], valueSpan: HTMLSpanElement, coinListDiv: HTMLDivElement) {
+function depositCoin(
+  coinList: { i: number; j: number; number: number }[],
+  valueSpan: HTMLSpanElement,
+  coinListDiv: HTMLDivElement,
+) {
   if (inventory.length > 0) {
     const coinToDeposit = inventory.pop()!;
     coinList.push(coinToDeposit);
     playerPoints--;
     valueSpan.innerHTML = coinList.length.toString();
-    coinListDiv.innerHTML = `Coins: <br><ul>${coinList
-      .map((coin) => `<li>${coin.i}: ${coin.j} #${coin.number}</li>`).join("")}</ul>`;
+    coinListDiv.innerHTML = `Coins: <br><ul>${
+      coinList
+        .map((coin) => `<li>${coin.i}: ${coin.j} #${coin.number}</li>`).join("")
+    }</ul>`;
     updateStatusPanel();
     updateInventoryDisplay();
     saveGameData();
@@ -162,12 +184,18 @@ function spawnCache(cell: { i: number; j: number }) {
   if (!(key in cacheData)) {
     if (luck(key) >= CACHE_SPAWN_PROBABILITY) return;
 
-    const numberOfCoins = Math.floor(luck(key + "_coins") * (MAX_COINS - MIN_COINS + 1)) + MIN_COINS;
-    cacheData[key] = new Geocache(cell.i, cell.j, Array.from({ length: numberOfCoins }, (_, number) => ({
-      i: cell.i,
-      j: cell.j,
-      number,
-    })));
+    const numberOfCoins =
+      Math.floor(luck(key + "_coins") * (MAX_COINS - MIN_COINS + 1)) +
+      MIN_COINS;
+    cacheData[key] = new Geocache(
+      cell.i,
+      cell.j,
+      Array.from({ length: numberOfCoins }, (_, number) => ({
+        i: cell.i,
+        j: cell.j,
+        number,
+      })),
+    );
   }
 
   const cache = cacheData[key];
@@ -180,16 +208,29 @@ function spawnCache(cell: { i: number; j: number }) {
         `<div>Cache found at "${cell.i},${cell.j}". Coins: <span id="value">${coinList.length}</span></div>
         <button id="collect">Collect a Coin</button>
         <button id="deposit">Deposit a Coin</button>
-        <div id="coinList">Coins: <br><ul>${coinList
-          .map((coin) => `<li>${coin.i}: ${coin.j} #${coin.number}</li>`).join("")}</ul></div>`;
+        <div id="coinList">Coins: <br><ul>${
+          coinList
+            .map((coin) => `<li>${coin.i}: ${coin.j} #${coin.number}</li>`)
+            .join("")
+        }</ul></div>`;
 
-      const collectButton = popupDiv.querySelector<HTMLButtonElement>("#collect")!;
-      const depositButton = popupDiv.querySelector<HTMLButtonElement>("#deposit")!;
+      const collectButton = popupDiv.querySelector<HTMLButtonElement>(
+        "#collect",
+      )!;
+      const depositButton = popupDiv.querySelector<HTMLButtonElement>(
+        "#deposit",
+      )!;
       const valueSpan = popupDiv.querySelector<HTMLSpanElement>("#value")!;
       const coinListDiv = popupDiv.querySelector<HTMLDivElement>("#coinList")!;
 
-      collectButton.addEventListener("click", () => collectCoin(coinList, valueSpan, coinListDiv));
-      depositButton.addEventListener("click", () => depositCoin(coinList, valueSpan, coinListDiv));
+      collectButton.addEventListener(
+        "click",
+        () => collectCoin(coinList, valueSpan, coinListDiv),
+      );
+      depositButton.addEventListener(
+        "click",
+        () => depositCoin(coinList, valueSpan, coinListDiv),
+      );
 
       return popupDiv;
     });
@@ -228,11 +269,20 @@ function loadCaches(savedData: Record<string, string>) {
 
 // Save game data to localStorage
 function saveGameData() {
-  localStorage.setItem(STORAGE_KEYS.PLAYER_LOCATION, JSON.stringify(playerLocation));
-  localStorage.setItem(STORAGE_KEYS.PLAYER_POINTS, JSON.stringify(playerPoints));
+  localStorage.setItem(
+    STORAGE_KEYS.PLAYER_LOCATION,
+    JSON.stringify(playerLocation),
+  );
+  localStorage.setItem(
+    STORAGE_KEYS.PLAYER_POINTS,
+    JSON.stringify(playerPoints),
+  );
   localStorage.setItem(STORAGE_KEYS.INVENTORY, JSON.stringify(inventory));
   localStorage.setItem(STORAGE_KEYS.CACHE_DATA, JSON.stringify(saveCaches()));
-  localStorage.setItem(STORAGE_KEYS.MOVEMENT_HISTORY, JSON.stringify(movementHistory));
+  localStorage.setItem(
+    STORAGE_KEYS.MOVEMENT_HISTORY,
+    JSON.stringify(movementHistory),
+  );
 }
 
 // Load game data from localStorage
@@ -241,7 +291,9 @@ function loadGameData() {
   const savedPoints = localStorage.getItem(STORAGE_KEYS.PLAYER_POINTS);
   const savedInventory = localStorage.getItem(STORAGE_KEYS.INVENTORY);
   const savedCacheData = localStorage.getItem(STORAGE_KEYS.CACHE_DATA);
-  const savedMovementHistory = localStorage.getItem(STORAGE_KEYS.MOVEMENT_HISTORY);
+  const savedMovementHistory = localStorage.getItem(
+    STORAGE_KEYS.MOVEMENT_HISTORY,
+  );
 
   if (savedLocation) playerLocation = leaflet.latLng(JSON.parse(savedLocation));
   if (savedPoints) playerPoints = JSON.parse(savedPoints);
@@ -249,13 +301,15 @@ function loadGameData() {
   if (savedCacheData) loadCaches(JSON.parse(savedCacheData));
 
   // Reset movement history and polyline
-  movementHistory = [playerLocation]; 
-  movementPolyline.setLatLngs(movementHistory); 
+  movementHistory = [playerLocation];
+  movementPolyline.setLatLngs(movementHistory);
 
   if (savedMovementHistory) {
-    const parsedHistory = JSON.parse(savedMovementHistory).map((coords: [number, number]) => leaflet.latLng(coords));
+    const parsedHistory = JSON.parse(savedMovementHistory).map((
+      coords: [number, number],
+    ) => leaflet.latLng(coords));
     if (parsedHistory.length > 0) {
-      movementHistory = [playerLocation]; 
+      movementHistory = [playerLocation];
     }
   }
 
@@ -271,14 +325,15 @@ function loadGameData() {
   updateInventoryDisplay();
 }
 
-
-
 // Move player
 function movePlayer(dx: number, dy: number) {
-  playerLocation = leaflet.latLng(playerLocation.lat + dy * TILE_WIDTH, playerLocation.lng + dx * TILE_WIDTH);
+  playerLocation = leaflet.latLng(
+    playerLocation.lat + dy * TILE_WIDTH,
+    playerLocation.lng + dx * TILE_WIDTH,
+  );
   playerMarker.setLatLng(playerLocation);
   map.panTo(playerLocation);
-  
+
   // Update movement history
   movementHistory.push(playerLocation);
   movementPolyline.setLatLngs(movementHistory);
@@ -288,10 +343,22 @@ function movePlayer(dx: number, dy: number) {
 }
 
 // Directional movement buttons
-document.querySelector<HTMLButtonElement>("#north")!.addEventListener("click", () => movePlayer(0, 1));
-document.querySelector<HTMLButtonElement>("#south")!.addEventListener("click", () => movePlayer(0, -1));
-document.querySelector<HTMLButtonElement>("#west")!.addEventListener("click", () => movePlayer(-1, 0));
-document.querySelector<HTMLButtonElement>("#east")!.addEventListener("click", () => movePlayer(1, 0));
+document.querySelector<HTMLButtonElement>("#north")!.addEventListener(
+  "click",
+  () => movePlayer(0, 1),
+);
+document.querySelector<HTMLButtonElement>("#south")!.addEventListener(
+  "click",
+  () => movePlayer(0, -1),
+);
+document.querySelector<HTMLButtonElement>("#west")!.addEventListener(
+  "click",
+  () => movePlayer(-1, 0),
+);
+document.querySelector<HTMLButtonElement>("#east")!.addEventListener(
+  "click",
+  () => movePlayer(1, 0),
+);
 
 // Geolocation tracking
 let geolocationInterval: number | null = null;
@@ -300,10 +367,13 @@ function startGeolocationTracking() {
   geolocationInterval = setInterval(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((position) => {
-        playerLocation = leaflet.latLng(position.coords.latitude, position.coords.longitude);
+        playerLocation = leaflet.latLng(
+          position.coords.latitude,
+          position.coords.longitude,
+        );
         playerMarker.setLatLng(playerLocation);
         map.panTo(playerLocation);
-        
+
         // Update movement history
         movementHistory.push(playerLocation);
         movementPolyline.setLatLngs(movementHistory);
@@ -324,31 +394,39 @@ function stopGeolocationTracking() {
   updateStatusPanel();
 }
 
-document.querySelector<HTMLButtonElement>("#sensor")!.addEventListener("click", () => {
-  if (geolocationInterval) {
-    stopGeolocationTracking();
-  } else {
-    startGeolocationTracking();
-  }
-});
+document.querySelector<HTMLButtonElement>("#sensor")!.addEventListener(
+  "click",
+  () => {
+    if (geolocationInterval) {
+      stopGeolocationTracking();
+    } else {
+      startGeolocationTracking();
+    }
+  },
+);
 
 function resetGame() {
   const confirmation = prompt(
-    "Are you sure you want to erase all game progress? This action cannot be undone. Type 'yes' if you are sure."
+    "Are you sure you want to erase all game progress? This action cannot be undone. Type 'yes' if you are sure.",
   );
 
   if (confirmation && confirmation.toLowerCase() === "yes") {
     // Save a copy of all coins (both collected and remaining in caches) before reset
-    const coinsToReturn: { i: number; j: number; number: number }[] = [...inventory];
+    const coinsToReturn: { i: number; j: number; number: number }[] = [
+      ...inventory,
+    ];
     const savedCaches = { ...cacheData };
 
     // Reset the game state
-    const defaultLocation = leaflet.latLng(36.98949379578401, -122.06277128548504);
+    const defaultLocation = leaflet.latLng(
+      36.98949379578401,
+      -122.06277128548504,
+    );
     playerLocation = defaultLocation;
     playerPoints = 0;
     inventory.length = 0;
     movementHistory = [playerLocation];
-    Object.keys(cacheData).forEach((key) => delete cacheData[key]); 
+    Object.keys(cacheData).forEach((key) => delete cacheData[key]);
 
     // Restore original caches and coins in sorted order
     for (const key in savedCaches) {
@@ -390,8 +468,10 @@ function resetGame() {
   }
 }
 
-
-document.querySelector<HTMLButtonElement>("#reset")!.addEventListener("click", resetGame);
+document.querySelector<HTMLButtonElement>("#reset")!.addEventListener(
+  "click",
+  resetGame,
+);
 
 // Load game data and initialize caches
 loadGameData();
