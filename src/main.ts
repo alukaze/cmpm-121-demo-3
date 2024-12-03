@@ -5,13 +5,14 @@ import "./leafletWorkaround.ts";
 import luck from "./luck.ts";
 import { Board } from "./board.ts";
 
+//test
 // Configuration constants
 const TILE_WIDTH = 1e-4;
 const TILE_VISIBILITY_RADIUS = 8;
 const CACHE_SPAWN_PROBABILITY = 0.1; 
 const MIN_COINS = 1;
 const MAX_COINS = 10;
-
+ 
 // Initialize player's position
 let playerLocation = leaflet.latLng(36.98949379578401, -122.06277128548504);
 
