@@ -104,7 +104,7 @@ function updateInventoryDisplay() {
 
       const i = parseInt(link.getAttribute("data-i")!);
       const j = parseInt(link.getAttribute("data-j")!);
-      const number = parseInt(link.getAttribute("data-number")!);
+      const _number = parseInt(link.getAttribute("data-number")!);
 
       // Find the cache for this coin
       const cache = cacheData[`${i},${j}`];
@@ -346,9 +346,9 @@ function resetGame() {
     const defaultLocation = leaflet.latLng(36.98949379578401, -122.06277128548504);
     playerLocation = defaultLocation;
     playerPoints = 0;
-    inventory.length = 0; // Clear inventory
+    inventory.length = 0;
     movementHistory = [playerLocation];
-    Object.keys(cacheData).forEach((key) => delete cacheData[key]); // Clear cache data
+    Object.keys(cacheData).forEach((key) => delete cacheData[key]); 
 
     // Restore original caches and coins in sorted order
     for (const key in savedCaches) {
