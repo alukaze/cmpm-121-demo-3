@@ -322,39 +322,39 @@ function loadGameData() {
   updateInventoryDisplay();
 }
 function updatePlayerLocation(dx: number, dy: number) {
- 
   playerLocation = leaflet.latLng(
     playerLocation.lat + dy * TILE_WIDTH,
     playerLocation.lng + dx * TILE_WIDTH,
   );
-  
+
   // Update movement history
   movementHistory.push(playerLocation);
-  saveGameData();  
+  saveGameData();
 }
 
 function updateMap() {
   playerMarker.setLatLng(playerLocation);
   map.panTo(playerLocation);
   movementPolyline.setLatLngs(movementHistory);
-  updateCaches(); 
+  updateCaches();
 }
-
 
 // Move player
 function movePlayer(dx: number, dy: number) {
-  updatePlayerLocation(dx, dy);  
+  updatePlayerLocation(dx, dy);
   updateMap();
-  updateCaches(); 
-  saveGameData(); 
+  updateCaches();
+  saveGameData();
 }
-
 
 // A reusable function to set up directional movement buttons
 function setupDirectionalButton(buttonId: string, dx: number, dy: number) {
-  document.querySelector<HTMLButtonElement>(buttonId)!.addEventListener("click", () => {
-    movePlayer(dx, dy); 
-  },);
+  document.querySelector<HTMLButtonElement>(buttonId)!.addEventListener(
+    "click",
+    () => {
+      movePlayer(dx, dy);
+    },
+  );
 }
 
 // Initialize all movement buttons
