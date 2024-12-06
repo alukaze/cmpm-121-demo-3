@@ -350,39 +350,18 @@ function movePlayer(dx: number, dy: number) {
 }
 
 
-// Directional movement buttons
-document.querySelector<HTMLButtonElement>("#north")!.addEventListener(
-  "click",
-  () => {
-    updatePlayerLocation(0, 1);
-    updateMap();
-  }
-);
+// A reusable function to set up directional movement buttons
+function setupDirectionalButton(buttonId: string, dx: number, dy: number) {
+  document.querySelector<HTMLButtonElement>(buttonId)!.addEventListener("click", () => {
+    movePlayer(dx, dy); 
+  });
+}
 
-document.querySelector<HTMLButtonElement>("#south")!.addEventListener(
-  "click",
-  () => {
-    updatePlayerLocation(0, -1);
-    updateMap();
-  }
-);
-
-document.querySelector<HTMLButtonElement>("#west")!.addEventListener(
-  "click",
-  () => {
-    updatePlayerLocation(-1, 0);
-    updateMap();
-  }
-);
-
-document.querySelector<HTMLButtonElement>("#east")!.addEventListener(
-  "click",
-  () => {
-    updatePlayerLocation(1, 0);
-    updateMap();
-  }
-);
-
+// Initialize all movement buttons
+setupDirectionalButton("#north", 0, 1);
+setupDirectionalButton("#south", 0, -1);
+setupDirectionalButton("#west", -1, 0);
+setupDirectionalButton("#east", 1, 0);
 
 // Geolocation tracking
 let geolocationInterval: number | null = null;
