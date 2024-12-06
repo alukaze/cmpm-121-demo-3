@@ -5,7 +5,6 @@ import "./leafletWorkaround.ts";
 import luck from "./luck.ts";
 import { Board } from "./board.ts";
 
-//test
 // Configuration constants
 const TILE_WIDTH = 1e-4;
 const TILE_VISIBILITY_RADIUS = 8;
@@ -315,50 +314,75 @@ function loadGameData() {
 
   movementPolyline.setLatLngs(movementHistory);
 
-  // Ensure the map pans to the saved player location (or default if none found)
   map.setView(playerLocation, 19);
 
-  // Move the player marker to the saved location
   playerMarker.setLatLng(playerLocation);
 
   updateStatusPanel();
   updateInventoryDisplay();
 }
-
-// Move player
-function movePlayer(dx: number, dy: number) {
+function updatePlayerLocation(dx: number, dy: number) {
+ 
   playerLocation = leaflet.latLng(
     playerLocation.lat + dy * TILE_WIDTH,
     playerLocation.lng + dx * TILE_WIDTH,
   );
-  playerMarker.setLatLng(playerLocation);
-  map.panTo(playerLocation);
-
+  
   // Update movement history
   movementHistory.push(playerLocation);
-  movementPolyline.setLatLngs(movementHistory);
-
-  updateCaches();
-  saveGameData();
+  saveGameData();  
 }
+
+function updateMap() {
+  playerMarker.setLatLng(playerLocation);
+  map.panTo(playerLocation);
+  movementPolyline.setLatLngs(movementHistory);
+  updateCaches(); 
+}
+
+
+// Move player
+function movePlayer(dx: number, dy: number) {
+  updatePlayerLocation(dx, dy);  
+  updateMap();
+  updateCaches(); 
+  saveGameData(); 
+}
+
 
 // Directional movement buttons
 document.querySelector<HTMLButtonElement>("#north")!.addEventListener(
   "click",
-  () => movePlayer(0, 1),
+  () => {
+    updatePlayerLocation(0, 1);
+    updateMap();
+  }
 );
+
 document.querySelector<HTMLButtonElement>("#south")!.addEventListener(
   "click",
-  () => movePlayer(0, -1),
+  () => {
+    updatePlayerLocation(0, -1);
+    updateMap();
+  }
 );
+
 document.querySelector<HTMLButtonElement>("#west")!.addEventListener(
   "click",
-  () => movePlayer(-1, 0),
+  () => {
+    updatePlayerLocation(-1, 0);
+    updateMap();
+  }
 );
+
 document.querySelector<HTMLButtonElement>("#east")!.addEventListener(
   "click",
-  () => movePlayer(1, 0),
+  () => {
+    updatePlayerLocation(1, 0);
+    updateMap();
+  }
 );
+
 
 // Geolocation tracking
 let geolocationInterval: number | null = null;
@@ -471,8 +495,6 @@ function restoreCachesAndCoins() {
     }
   });
 }
-
-
 
 document.querySelector<HTMLButtonElement>("#reset")!.addEventListener(
   "click",
