@@ -354,7 +354,7 @@ function movePlayer(dx: number, dy: number) {
 function setupDirectionalButton(buttonId: string, dx: number, dy: number) {
   document.querySelector<HTMLButtonElement>(buttonId)!.addEventListener("click", () => {
     movePlayer(dx, dy); 
-  });
+  },);
 }
 
 // Initialize all movement buttons
