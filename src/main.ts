@@ -407,66 +407,72 @@ document.querySelector<HTMLButtonElement>("#sensor")!.addEventListener(
 
 function resetGame() {
   const confirmation = prompt(
-    "Are you sure you want to erase all game progress? This action cannot be undone. Type 'yes' if you are sure.",
+    "Are you sure you want to erase all game progress? This action cannot be undone. Type 'yes' if you are sure."
   );
-
   if (confirmation && confirmation.toLowerCase() === "yes") {
-    // Save a copy of all coins (both collected and remaining in caches) before reset
-    const coinsToReturn: { i: number; j: number; number: number }[] = [
-      ...inventory,
-    ];
-    const savedCaches = { ...cacheData };
-
-    // Reset the game state
-    const defaultLocation = leaflet.latLng(
-      36.98949379578401,
-      -122.06277128548504,
-    );
-    playerLocation = defaultLocation;
-    playerPoints = 0;
-    inventory.length = 0;
-    movementHistory = [playerLocation];
-    Object.keys(cacheData).forEach((key) => delete cacheData[key]);
-
-    // Restore original caches and coins in sorted order
-    for (const key in savedCaches) {
-      const { i, j, coins } = savedCaches[key];
-      if (!(key in cacheData)) {
-        cacheData[key] = new Geocache(i, j);
-      }
-      // Sort coins by their "number" property before restoring
-      coins.sort((a, b) => a.number - b.number);
-      coins.forEach((coin) => cacheData[key].coins.push(coin));
-    }
-
-    // Return collected coins to their respective caches in sorted order
-    coinsToReturn.forEach((coin) => {
-      const cacheKey = `${coin.i},${coin.j}`;
-      if (!(cacheKey in cacheData)) {
-        cacheData[cacheKey] = new Geocache(coin.i, coin.j);
-      }
-      // Add collected coins in sorted order
-      cacheData[cacheKey].coins.push(coin);
-      cacheData[cacheKey].coins.sort((a, b) => a.number - b.number);
-    });
-
-    // Clear game data from localStorage
-    localStorage.removeItem(STORAGE_KEYS.PLAYER_LOCATION);
-    localStorage.removeItem(STORAGE_KEYS.PLAYER_POINTS);
-    localStorage.removeItem(STORAGE_KEYS.INVENTORY);
-    localStorage.removeItem(STORAGE_KEYS.CACHE_DATA);
-    localStorage.removeItem(STORAGE_KEYS.MOVEMENT_HISTORY);
-
-    // Reset map and UI
-    map.setView(defaultLocation, 19);
-    playerMarker.setLatLng(defaultLocation);
-    movementPolyline.setLatLngs(movementHistory);
-
+    clearGameState();
+    resetMap();
+    restoreCachesAndCoins();
     updateStatusPanel();
     updateInventoryDisplay();
-    updateCaches();
   }
 }
+
+function clearGameState() {
+  // Reset player-specific logic
+  playerLocation = leaflet.latLng(36.98949379578401, -122.06277128548504);
+  playerPoints = 0;
+  inventory.length = 0;
+  movementHistory = [playerLocation];
+  Object.keys(cacheData).forEach((key) => delete cacheData[key]);
+
+  // Clear localStorage
+  localStorage.removeItem(STORAGE_KEYS.PLAYER_LOCATION);
+  localStorage.removeItem(STORAGE_KEYS.PLAYER_POINTS);
+  localStorage.removeItem(STORAGE_KEYS.INVENTORY);
+  localStorage.removeItem(STORAGE_KEYS.CACHE_DATA);
+  localStorage.removeItem(STORAGE_KEYS.MOVEMENT_HISTORY);
+}
+
+function resetMap() {
+  // Reset map-related state
+  map.setView(playerLocation, 19);
+  playerMarker.setLatLng(playerLocation);
+  movementPolyline.setLatLngs(movementHistory);
+
+  updateCaches(); // Re-render caches
+}
+
+function restoreCachesAndCoins() {
+  // Save a copy of all coins before reset
+  const coinsToReturn = [...inventory];
+  const savedCaches = { ...cacheData };
+
+  // Restore original caches and coins in sorted order
+  Object.keys(savedCaches).forEach((key) => {
+    const { i, j, coins } = savedCaches[key];
+    if (!(key in cacheData)) {
+      cacheData[key] = new Geocache(i, j);
+    }
+    // Ensure coins are added only once
+    cacheData[key].coins = coins.slice().sort((a, b) => a.number - b.number);
+  });
+
+  // Return collected coins to their respective caches in sorted order
+  coinsToReturn.forEach((coin) => {
+    const cacheKey = `${coin.i},${coin.j}`;
+    if (!(cacheKey in cacheData)) {
+      cacheData[cacheKey] = new Geocache(coin.i, coin.j);
+    }
+    // Avoid adding duplicates by checking if the coin is already in the cache
+    if (!cacheData[cacheKey].coins.some((c) => c.number === coin.number)) {
+      cacheData[cacheKey].coins.push(coin);
+      cacheData[cacheKey].coins.sort((a, b) => a.number - b.number);
+    }
+  });
+}
+
+
 
 document.querySelector<HTMLButtonElement>("#reset")!.addEventListener(
   "click",
