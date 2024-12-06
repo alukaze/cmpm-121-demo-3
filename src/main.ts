@@ -410,7 +410,7 @@ document.querySelector<HTMLButtonElement>("#sensor")!.addEventListener(
 
 function resetGame() {
   const confirmation = prompt(
-    "Are you sure you want to erase all game progress? This action cannot be undone. Type 'yes' if you are sure."
+    "Are you sure you want to erase all game progress? This action cannot be undone. Type 'yes' if you are sure.",
   );
   if (confirmation && confirmation.toLowerCase() === "yes") {
     clearGameState();
